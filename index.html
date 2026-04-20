@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Campamentos 2026, visor amigable</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <style>
     :root {
       --bg: #0b1020;
@@ -51,19 +52,9 @@
     .btn { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #04101b; padding: 10px 12px; font-weight: 700; cursor: pointer; border: none; }
     .btn.secondary { background: #1d2852; color: var(--text); border: 1px solid var(--border); }
     .map-panel { min-height: 260px; display: grid; gap: 12px; }
-    .fake-map { position: relative; min-height: 320px; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); background:
-      radial-gradient(circle at 30% 30%, rgba(110,231,249,.16), transparent 30%),
-      radial-gradient(circle at 70% 65%, rgba(96,165,250,.14), transparent 25%),
-      linear-gradient(180deg, #0f1c35, #0b1327);
-    }
-    .fake-map::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
-      background-size: 32px 32px;
-      pointer-events: none;
-    }
+    .fake-map { min-height: 360px; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); }
+    #map { height: 360px; width: 100%; }
+    .leaflet-container { background: #0b1327; }
     .pin {
       position: absolute;
       transform: translate(-50%, -100%);
@@ -102,7 +93,7 @@
       .layout { grid-template-columns: 1fr; }
       .filters { position: static; }
       .result-grid { grid-template-columns: 1fr; }
-      .fake-map { min-height: 240px; }
+      .fake-map, #map { min-height: 240px; height: 240px; }
     }
   </style>
 </head>
@@ -145,16 +136,7 @@
           <label>Actividades</label>
           <div id="themes" class="chips"></div>
         </div>
-        <div class="field">
-          <label for="geoQuality">Calidad geográfica</label>
-          <select id="geoQuality">
-            <option value="">Cualquiera</option>
-            <option value="exacta">Solo exacta</option>
-            <option value="aproximada">Exacta o aproximada</option>
-            <option value="pendiente">Pendiente</option>
-          </select>
-        </div>
-        <button class="btn secondary" id="resetFilters">Limpiar filtros</button>
+                <button class="btn secondary" id="resetFilters">Limpiar filtros</button>
 
         <details style="margin-top:12px;">
           <summary>Notas de la app</summary>
@@ -172,7 +154,7 @@
         <section class="map-panel">
           <h2>Mapa rápido</h2>
           <div class="fake-map" id="map"></div>
-          <div class="mini-legend"><span><i class="dot exacta"></i>Exacta</span><span><i class="dot aproximada"></i>Aproximada</span><span><i class="dot pendiente"></i>Pendiente</span></div><div class="legend">Mapa simplificado recalculado según los filtros activos. Cada ficha permite abrir la ubicación en Google Maps u OpenStreetMap.</div>
+          <div class="legend">Mapa real con OpenStreetMap. Se actualiza según los filtros activos y centra automáticamente las ubicaciones visibles.</div>
         </section>
 
         <section>
@@ -5371,8 +5353,7 @@
       municipality: document.getElementById('municipality'),
       month: document.getElementById('month'),
       themes: document.getElementById('themes'),
-      geoQuality: document.getElementById('geoQuality'),
-      reset: document.getElementById('resetFilters'),
+            reset: document.getElementById('resetFilters'),
       stats: document.getElementById('stats'),
       results: document.getElementById('results'),
       empty: document.getElementById('emptyState'),
@@ -5426,17 +5407,13 @@
       const municipality = el.municipality.value;
       const month = el.month.value;
       const birthYear = el.birthYear.value ? Number(el.birthYear.value) : null;
-      const geoQuality = el.geoQuality.value;
-      return camps.filter(c => {
+            return camps.filter(c => {
         if (province && c.province !== province) return false;
         if (type && c.type !== type) return false;
         if (municipality && c.municipality !== municipality) return false;
         if (month && c.month !== month) return false;
         if (state.theme && !c.themes.includes(state.theme)) return false;
         if (birthYear !== null && !(c.birthYears || []).includes(birthYear)) return false;
-        if (geoQuality === 'exacta' && c.geoPrecision !== 'exacta') return false;
-        if (geoQuality === 'aproximada' && !(c.geoPrecision === 'exacta' || c.geoPrecision === 'aproximada')) return false;
-        if (geoQuality === 'pendiente' && c.geoPrecision !== 'pendiente') return false;
         if (q) {
           const hay = [c.name, c.place, c.municipality, c.province, c.description, ...(c.themes || [])]
             .filter(Boolean)
@@ -5517,24 +5494,41 @@
       return { x, y };
     }
 
+    let leafletMap;
+    let markerLayer;
+
+    function ensureMap() {
+      if (leafletMap) return;
+      leafletMap = L.map('map', { scrollWheelZoom: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(leafletMap);
+      markerLayer = L.layerGroup().addTo(leafletMap);
+      leafletMap.setView([42.6, -8.2], 7);
+    }
+
     function renderMap(items) {
-      el.map.innerHTML = '';
+      ensureMap();
+      markerLayer.clearLayers();
       const mapped = items.filter(c => Number.isFinite(c.lat) && Number.isFinite(c.lng));
       if (!mapped.length) {
-        el.map.innerHTML = '<div class="empty" style="margin:16px;">No hay ubicaciones para los filtros activos.</div>';
+        leafletMap.setView([42.6, -8.2], 7);
         return;
       }
+      const bounds = [];
       mapped.forEach(c => {
-        const pin = document.createElement('button');
-        const p = projectPoint(c);
-        pin.className = `pin ${c.geoPrecision || 'pendiente'}`;
-        pin.title = `${c.name} · ${c.place} · geo ${c.geoPrecision}`;
-        pin.style.left = `${p.x}%`;
-        pin.style.top = `${p.y}%`;
-        pin.onclick = () => window.open(googleMapsUrl(c), '_blank', 'noopener');
-        pin.setAttribute('aria-label', `${c.name} en ${c.municipality || c.place}`);
-        el.map.appendChild(pin);
+        const color = c.geoPrecision === 'exacta' ? '#6ee7f9' : (c.geoPrecision === 'aproximada' ? '#60a5fa' : '#94a3b8');
+        const marker = L.circleMarker([c.lat, c.lng], { radius: 7, color, weight: 2, fillColor: color, fillOpacity: 0.8 });
+        marker.bindPopup(`<strong>${c.name}</strong><br>${c.place}<br>${c.municipality || ''}<br>Geo: ${c.geoPrecision}<br><a href="${googleMapsUrl(c)}" target="_blank" rel="noopener">Google Maps</a>`);
+        marker.addTo(markerLayer);
+        bounds.push([c.lat, c.lng]);
       });
+      if (bounds.length === 1) {
+        leafletMap.setView(bounds[0], 11);
+      } else {
+        leafletMap.fitBounds(bounds, { padding: [30, 30] });
+      }
     }
 
     function renderAll() {
@@ -5552,8 +5546,7 @@
       el.municipality.value = '';
       el.month.value = '';
       el.birthYear.value = '';
-      el.geoQuality.value = '';
-      state.theme = null;
+            state.theme = null;
       renderAll();
     }
 
@@ -5562,9 +5555,10 @@
     fillSelect(el.municipality, municipalities, 'Todos los municipios');
     fillSelect(el.month, months.map(m => ({'07':'Julio','08':'Agosto','09':'Septiembre'}[m])), 'Todos los meses');
     Array.from(el.month.options).forEach((opt, idx) => { if (idx>0) opt.value = months[idx-1]; });
-    [el.search, el.province, el.type, el.municipality, el.month, el.birthYear, el.geoQuality].forEach(node => node.addEventListener('input', renderAll));
+    [el.search, el.province, el.type, el.municipality, el.month, el.birthYear].forEach(node => node.addEventListener('input', renderAll));
     el.reset.addEventListener('click', resetFilters);
     renderAll();
   </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </body>
 </html>
