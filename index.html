@@ -165,7 +165,7 @@
     </section>
       <footer class="panel" id="footerStats" style="margin-top:16px; text-align:center;">
       <div class="note">Visitas a esta app: <strong id="visitCount">-</strong></div>
-      <div class="legend">Contador local del navegador. Para analítica real haría falta un servicio externo.</div>
+      <div class="legend">Contador global gratuito usando CountAPI.</div>
     </footer>
   </main>
 
@@ -5553,13 +5553,16 @@
     }
 
 
-    function updateVisitCounter() {
-      const key = 'campamentos-xunta-2026-visits';
-      let count = Number(localStorage.getItem(key) || '0');
-      count += 1;
-      localStorage.setItem(key, String(count));
+    async function updateVisitCounter() {
       const node = document.getElementById('visitCount');
-      if (node) node.textContent = count.toLocaleString('es-ES');
+      try {
+        const url = 'https://api.countapi.xyz/hit/djbusta365.github.io/campamentos-xunta-2026';
+        const response = await fetch(url);
+        const data = await response.json();
+        if (node) node.textContent = Number(data.value || 0).toLocaleString('es-ES');
+      } catch (error) {
+        if (node) node.textContent = 'N/D';
+      }
     }
 
     function renderAll() {
