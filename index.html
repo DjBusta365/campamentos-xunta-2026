@@ -100,9 +100,9 @@
 <body>
   <main class="app">
     <section class="hero">
-      <div class="eyebrow">Modo verano activo · App single-file</div>
+      <div class="eyebrow">Modo verano activo</div>
       <h1>Visor amigable de campamentos 2026</h1>
-      <p>Una primera app responsive, pensada para móvil, con filtros, fichas limpias y geolocalización lista para pintar en mapa.</p>
+      <p>App pensada en facilitar búsqueda con filtros, fichas limpias y geolocalización.</p>
     </section>
 
     <section class="layout">
@@ -163,6 +163,10 @@
         </section>
       </section>
     </section>
+      <footer class="panel" id="footerStats" style="margin-top:16px; text-align:center;">
+      <div class="note">Visitas a esta app: <strong id="visitCount">-</strong></div>
+      <div class="legend">Contador local del navegador. Para analítica real haría falta un servicio externo.</div>
+    </footer>
   </main>
 
   <script>
@@ -5531,6 +5535,16 @@
       }
     }
 
+
+    function updateVisitCounter() {
+      const key = 'campamentos-xunta-2026-visits';
+      let count = Number(localStorage.getItem(key) || '0');
+      count += 1;
+      localStorage.setItem(key, String(count));
+      const node = document.getElementById('visitCount');
+      if (node) node.textContent = count.toLocaleString('es-ES');
+    }
+
     function renderAll() {
       renderThemes();
       const items = getFiltered();
@@ -5557,6 +5571,7 @@
     Array.from(el.month.options).forEach((opt, idx) => { if (idx>0) opt.value = months[idx-1]; });
     [el.search, el.province, el.type, el.municipality, el.month, el.birthYear].forEach(node => node.addEventListener('input', renderAll));
     el.reset.addEventListener('click', resetFilters);
+    updateVisitCounter();
     renderAll();
   </script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
