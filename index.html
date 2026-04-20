@@ -131,7 +131,7 @@
           <input id="birthYear" type="number" min="2000" max="2026" placeholder="Ej. 2013" />
         </div>
         <div class="field">
-          <label>Temáticas</label>
+          <label>Actividades</label>
           <div id="themes" class="chips"></div>
         </div>
         <div class="field">
@@ -5369,7 +5369,7 @@
     const unique = (arr) => [...new Set(arr)].sort((a,b) => String(a).localeCompare(String(b), 'es'));
     const provinces = unique(camps.map(c => c.province));
     const types = unique(camps.map(c => c.type));
-    const themes = unique(camps.flatMap(c => c.themes));
+    const themes = unique(camps.flatMap(c => c.themes)).sort((a,b) => a.localeCompare(b, 'es'));
     const municipalities = unique(camps.map(c => c.municipality).filter(Boolean));
     const months = ['07','08','09'];
 
@@ -5392,7 +5392,7 @@
       themes.forEach(theme => {
         const button = document.createElement('button');
         button.className = `chip ${state.theme === theme ? 'active' : ''}`;
-        button.textContent = theme;
+        button.textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
         button.type = 'button';
         button.onclick = () => {
           state.theme = state.theme === theme ? null : theme;
@@ -5477,7 +5477,7 @@
             <span>💶 ${c.price ?? 'Pendiente'}</span>
           </div>
           <div class="chips">
-            ${(c.themes || []).map(t => `<span class="chip">${t}</span>`).join('')}
+            ${(c.themes || []).sort((a,b) => a.localeCompare(b, 'es')).map(t => `<span class="chip">${t.charAt(0).toUpperCase() + t.slice(1)}</span>`).join('')}
           </div>
           <div class="desc">${c.description}</div>
           <div class="note">Estado de datos: <strong>${c.sourceStatus || 'confirmado'}</strong>. ${c.sourceNote || ''}</div>
