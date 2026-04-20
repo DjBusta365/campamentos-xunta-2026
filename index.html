@@ -74,7 +74,12 @@
       background: linear-gradient(180deg, var(--accent), var(--accent-2));
       box-shadow: 0 4px 14px rgba(96,165,250,.4);
       cursor: pointer;
+      transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
     }
+    .pin.exacta { filter: saturate(1.2); }
+    .pin.aproximada { opacity: .85; }
+    .pin.pendiente { background: linear-gradient(180deg, #94a3b8, #64748b); opacity: .65; }
+    .pin:hover { transform: translate(-50%, -105%) scale(1.12); box-shadow: 0 8px 18px rgba(96,165,250,.45); }
     .pin::after {
       content: "";
       position: absolute;
@@ -83,6 +88,12 @@
       background: white;
     }
     .legend, .note { color: var(--muted); font-size: .9rem; }
+    .mini-legend { display:flex; gap:10px; flex-wrap:wrap; font-size:.85rem; color:var(--muted); }
+    .mini-legend span{ display:inline-flex; align-items:center; gap:6px; }
+    .dot{ width:10px; height:10px; border-radius:999px; display:inline-block; }
+    .dot.exacta{ background:#6ee7f9; }
+    .dot.aproximada{ background:#60a5fa; }
+    .dot.pendiente{ background:#94a3b8; }
     .empty { padding: 22px; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: 18px; }
     details { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; background: rgba(255,255,255,.02); }
     summary { cursor: pointer; font-weight: 700; }
@@ -161,7 +172,7 @@
         <section class="map-panel">
           <h2>Mapa rápido</h2>
           <div class="fake-map" id="map"></div>
-          <div class="legend">Mapa simplificado con posiciones exactas o aproximadas. Cada ficha permite abrir la ubicación en Google Maps u OpenStreetMap.</div>
+          <div class="mini-legend"><span><i class="dot exacta"></i>Exacta</span><span><i class="dot aproximada"></i>Aproximada</span><span><i class="dot pendiente"></i>Pendiente</span></div><div class="legend">Mapa simplificado recalculado según los filtros activos. Cada ficha permite abrir la ubicación en Google Maps u OpenStreetMap.</div>
         </section>
 
         <section>
@@ -5508,14 +5519,20 @@
 
     function renderMap(items) {
       el.map.innerHTML = '';
-      items.filter(c => Number.isFinite(c.lat) && Number.isFinite(c.lng)).forEach(c => {
+      const mapped = items.filter(c => Number.isFinite(c.lat) && Number.isFinite(c.lng));
+      if (!mapped.length) {
+        el.map.innerHTML = '<div class="empty" style="margin:16px;">No hay ubicaciones para los filtros activos.</div>';
+        return;
+      }
+      mapped.forEach(c => {
         const pin = document.createElement('button');
         const p = projectPoint(c);
-        pin.className = 'pin';
+        pin.className = `pin ${c.geoPrecision || 'pendiente'}`;
         pin.title = `${c.name} · ${c.place} · geo ${c.geoPrecision}`;
         pin.style.left = `${p.x}%`;
         pin.style.top = `${p.y}%`;
         pin.onclick = () => window.open(googleMapsUrl(c), '_blank', 'noopener');
+        pin.setAttribute('aria-label', `${c.name} en ${c.municipality || c.place}`);
         el.map.appendChild(pin);
       });
     }
