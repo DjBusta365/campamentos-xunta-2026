@@ -164,7 +164,7 @@
       </section>
     </section>
       <footer class="panel" id="footerStats" style="margin-top:16px; text-align:center;">
-      <div class="note">Visitas a esta app: <strong id="visitCount">-</strong></div>
+      <div class="note">Visitas a esta app: <strong id="visitCount">cargando...</strong></div>
       <div class="legend">Contador global gratuito usando CountAPI.</div>
     </footer>
   </main>
@@ -5555,13 +5555,19 @@
 
     async function updateVisitCounter() {
       const node = document.getElementById('visitCount');
+      if (node) node.textContent = 'cargando...';
       try {
-        const url = 'https://api.countapi.xyz/hit/djbusta365.github.io/campamentos-xunta-2026';
-        const response = await fetch(url);
+        const namespace = 'djbusta365-campamentos-xunta-2026';
+        const key = 'visits';
+        const url = `https://api.countapi.xyz/hit/${namespace}/${key}`;
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        if (node) node.textContent = Number(data.value || 0).toLocaleString('es-ES');
+        const value = Number(data.value ?? 0);
+        if (node) node.textContent = value.toLocaleString('es-ES');
       } catch (error) {
         if (node) node.textContent = 'N/D';
+        console.error('CountAPI error', error);
       }
     }
 
