@@ -6615,7 +6615,7 @@
     const unique = (arr) => [...new Set(arr)].sort((a,b) => String(a).localeCompare(String(b), 'es'));
     const provinces = unique(camps.map(c => c.province));
     const types = unique(camps.map(c => c.type));
-    const themes = unique(camps.flatMap(c => c.themes)).sort((a,b) => a.localeCompare(b, 'es'));
+    const themes = unique(camps.flatMap(c => [...(c.themes || []), ...(c.allActivities || [])])).sort((a,b) => a.localeCompare(b, 'es'));
     const months = ['07','08','09'];
 
     function fillSelect(select, values, allLabel) {
